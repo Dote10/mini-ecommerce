@@ -5,9 +5,10 @@ import * as jwt from 'jsonwebtoken'
 import { JWT_SECRET } from '../secret';
 import { BadRequestException } from "../exceptions/bad-requests";
 import { ErrorCodes } from '../exceptions/root';
+import { UnprocessableEntity } from "../exceptions/validation";
 
 export const signup:RequestHandler = async (req,res, next) => {
-    
+    try{
     const { email, password, name, address, phone } = req.body;
 
     const existUser = await prisma.user.findFirst({
@@ -37,8 +38,16 @@ export const signup:RequestHandler = async (req,res, next) => {
             phone
         }
     })
-
+    
     res.json(user);
+    
+    }catch(error){
+        next(
+            new UnprocessableEntity('데이터 양식이 올바르지 않습니다.',
+                ErrorCodes.INCORRECT_FORMAT,
+                error)
+        );
+    }
 }
 
 export const login:RequestHandler = async (req,res, next) => {

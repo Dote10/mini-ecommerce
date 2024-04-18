@@ -3,6 +3,7 @@ import * as dotenv from 'dotenv'
 import rootRouter from './routes';
 import { PrismaClient } from '@prisma/client';
 import { errorMiddleware } from './middlewares/errors';
+import { signupSchema } from './schema/users';
 process.env.NODE_ENV == 'prod'? dotenv.config({path:'./.env.prod'}) : dotenv.config({path:'./.env.local'});
 
 const app:Express = express();
@@ -14,7 +15,16 @@ app.use('/',rootRouter);
 
  export const prisma = new PrismaClient({
     log:['query']
-});
+}).$extends({
+    query:{
+        user:{
+            create:({args,query}) => {
+                args.data = signupSchema.parse(args.data)
+                return query(args);
+            }
+        }
+    }
+})
 
 //에러 처리 헨들러 
 app.use(errorMiddleware);

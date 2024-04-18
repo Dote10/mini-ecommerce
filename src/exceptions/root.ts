@@ -1,8 +1,8 @@
 // message, status code(공통적), error code(식별가능)
 export class HttpException extends Error{
-    message: string;
-    errorCode: ErrorCodes;
-    statusCode: number;
+    message: string;        //에러 발생 원인
+    errorCode: ErrorCodes;  //에러유형(Enum)
+    statusCode: number;     //Http status
     errors: any;
 
     constructor(message:string, errorCode: ErrorCodes, statusCode:number, error:any) {
@@ -17,5 +17,6 @@ export class HttpException extends Error{
 export enum ErrorCodes {
     USER_NOT_FOUND = 1001,
     USER_ALREADY_EXISTS = 1002,
-    INCORRECT_PASSWORD = 1003
+    INCORRECT_PASSWORD = 1003,
+    INCORRECT_FORMAT = 2001
 }
