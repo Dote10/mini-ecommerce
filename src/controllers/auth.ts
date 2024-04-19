@@ -1,85 +1,94 @@
 import { RequestHandler } from "express";
-import { prisma } from '../index';
-import bcrypt from 'bcrypt';
-import * as jwt from 'jsonwebtoken'
-import { JWT_SECRET } from '../secret';
+import { prisma } from "../index";
+import bcrypt from "bcrypt";
+import * as jwt from "jsonwebtoken";
+import { JWT_SECRET } from "../secret";
 import { BadRequestException } from "../exceptions/bad-requests";
-import { ErrorCodes } from '../exceptions/root';
+import { ErrorCodes } from "../exceptions/root";
 import { UnprocessableEntity } from "../exceptions/validation";
+import { signupSchema } from "../schema/users";
 
-export const signup:RequestHandler = async (req,res, next) => {
-    try{
-    const { email, password, name, address, phone } = req.body;
+export const signup: RequestHandler = async (req, res, next) => {
+  const { email, password, name, address, phone } = req.body;
 
-    const existUser = await prisma.user.findFirst({
-        where:{
-            email,
-        }
-    });
+  const existUser = await prisma.user.findUnique({
+    where: {
+      email,
+    },
+  });
 
-    if(existUser){
-        next(new BadRequestException('해당 email의 사용자가 이미 존재합니다.',ErrorCodes.USER_ALREADY_EXISTS));
-    }
+  if (existUser) {
+    return next(
+      new BadRequestException(
+        "해당 email의 사용자가 이미 존재합니다.",
+        ErrorCodes.USER_ALREADY_EXISTS
+      )
+    );
+  }
 
-    const encodedPassword = bcrypt.hashSync(password,10);
-
+  const encodedPassword = bcrypt.hashSync(password, 10);
+  try {
     const user = await prisma.user.create({
-        select:{
-            name:true,
-            email:true,
-            address:true,
-            phone:true
-        },
-        data:{
-            name,
-            email,
-            password :encodedPassword,
-            address,
-            phone
-        }
-    })
-    
-    res.json(user);
-    
-    }catch(error){
-        next(
-            new UnprocessableEntity('데이터 양식이 올바르지 않습니다.',
-                ErrorCodes.INCORRECT_FORMAT,
-                error)
-        );
-    }
-}
-
-export const login:RequestHandler = async (req,res, next) => {
-    const {email, password } = req.body;
-
-    const user = await prisma.user.findFirst({
-        where:{
-            email
-        }
+      select: {
+        name: true,
+        email: true,
+        address: true,
+        phone: true,
+      },
+      data: {
+        name,
+        email,
+        password: encodedPassword,
+        address,
+        phone,
+      },
     });
 
-    if(!user){
-        throw new BadRequestException(
-        '해당 email에 대한 가입정보가 없습니다.',
-        ErrorCodes.USER_NOT_FOUND
-        );
-    }
+    res.json(user);
+  } catch (error) {
+    next(
+      new UnprocessableEntity(
+        "데이터 양식이 올바르지 않습니다.",
+        ErrorCodes.INCORRECT_FORMAT,
+        error
+      )
+    );
+  }
+};
 
-    const match = await bcrypt.compare(password, user.password);
+export const login: RequestHandler = async (req, res, next) => {
+  const { email, password } = req.body;
 
-    if(!match){
-        throw new BadRequestException(
-        '일치하지 않는 비밀번호 입니다.',
-        ErrorCodes.INCORRECT_PASSWORD
-        );
-    }
+  const user = await prisma.user.findFirst({
+    where: {
+      email,
+    },
+  });
 
-    //jwttoken 발급
-    const token = jwt.sign({
-        userId: user.id,
-        email: user.email
-    },JWT_SECRET)
+  if (!user) {
+    throw new BadRequestException(
+      "해당 email에 대한 가입정보가 없습니다.",
+      ErrorCodes.USER_NOT_FOUND
+    );
+  }
 
-    res.json(token);
-}
+  const match = await bcrypt.compare(password, user.password);
+
+  if (!match) {
+    throw new BadRequestException(
+      "일치하지 않는 비밀번호 입니다.",
+      ErrorCodes.INCORRECT_PASSWORD
+    );
+  }
+
+  //jwttoken 발급
+  const token = jwt.sign(
+    {
+      userId: user.id,
+      email: user.email,
+    },
+    JWT_SECRET
+  );
+
+  res.json(token);
+};
